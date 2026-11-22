@@ -1,0 +1,14 @@
+# 第三方榜单数据与含数据的截图：原站条款不允许再分发，不得提交
+# 不带末尾斜杠：data 是指向别处的软链接时也要忽略
+/data
+/docs
+ai-models-*.csv
+ai-models-*.json
+ai-models-*.png
+ai-models-*.svg
+
+/.claude/
+__pycache__/
+*.pyc
+*.tmp
+.DS_Store
