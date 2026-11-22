@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' file:; style-src 'self' file:; connect-src 'self'; img-src data: blob: http://127.0.0.1:*; base-uri 'none'; form-action 'none'">
+<title>AI 模型档位曲线</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 13 6 7l4 2 4-6' fill='none' stroke='%232a78d6' stroke-width='2.4'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><h1>AI 模型档位曲线</h1><p id="meta"></p></div>
+  <div class="top-actions">
+    <button class="btn update-button" id="update" aria-expanded="false" aria-controls="update-panel">
+      <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 6A6 6 0 1 0 14 9M14 2v4h-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>更新数据</span>
+    </button>
+    <button class="btn" id="undo" title="撤销 ⌘Z" aria-label="撤销">↶</button>
+    <button class="btn" id="redo" title="重做 ⇧⌘Z" aria-label="重做">↷</button>
+    <button class="btn" id="share">复制链接</button>
+    <button class="btn" id="export" aria-haspopup="dialog">导出</button>
+    <button class="btn" id="theme">主题</button>
+    <button class="btn" id="focus" title="专注模式 F" aria-pressed="false">专注</button>
+    <button class="btn" id="panel-toggle">模型列表</button>
+    <button class="btn" id="help" title="使用说明" aria-label="使用说明">?</button>
+  </div>
+</header>
+<div class="layout">
+  <nav id="views" class="views" aria-label="图表视图"></nav>
+  <main class="main">
+    <div class="filter-bar">
+      <input id="search" class="input search" type="search" placeholder="搜索模型或厂商，按 /" aria-label="搜索模型或厂商" title="空格=且　逗号=或　-词=排除　/正则/">
+      <div id="filters" class="filters"></div>
+      <output id="count" class="count"></output>
+    </div>
+    <div id="chips" class="chips" hidden></div>
+    <section class="card">
+      <div class="card-head">
+        <div class="heading"><h2 id="title"></h2><p id="hint"></p></div>
+        <div id="options" class="options"></div>
+      </div>
+      <div id="legend" class="legend"></div>
+      <div id="stage" class="stage"></div>
+      <div id="foot" class="foot"></div>
+    </section>
+  </main>
+  <aside id="panel" class="panel" aria-label="模型列表">
+    <header><h2>模型 <span id="panel-count"></span></h2><button class="icon" id="panel-close" aria-label="收起模型列表">×</button></header>
+    <div class="panel-tools">
+      <input id="panel-search" class="input" type="search" placeholder="在列表中查找" aria-label="在列表中查找">
+      <select id="panel-sort" class="select" aria-label="列表排序">
+        <option value="iq">按智能</option><option value="cost">按价格</option><option value="levels">按档位数</option>
+      </select>
+    </div>
+    <div id="panel-list" class="panel-list"></div>
+  </aside>
+</div>
+<div id="pop" class="pop" role="dialog" aria-label="选项" hidden></div>
+<div id="tip" class="tip" role="status" hidden></div>
+<aside id="drawer" class="drawer" aria-label="模型详情" hidden></aside>
+<dialog id="dialog" class="dialog"></dialog>
+<aside id="update-panel" class="update-panel" aria-label="数据更新" hidden></aside>
+<div id="update-live" class="sr-only" role="status"></div>
+<div id="toast" class="toast" role="status" hidden></div>
+<script src="data/data.js"></script>
+<script src="assets/core.js"></script>
+<script src="assets/plot.js"></script>
+<script src="assets/views.js"></script>
+<script src="assets/ui.js"></script>
+<script src="assets/update.js"></script>
+</body>
+</html>
