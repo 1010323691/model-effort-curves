@@ -604,8 +604,10 @@
     $('undo').disabled = !AA.canUndo();
     $('redo').disabled = !AA.canRedo();
     const missing = rows.filter((r) => r.cost === null).length;
+    const undefaulted = S.pick === 'default' ? new Set(rows.map((r) => r.group).filter(AA.defaultUnknown)).size : 0;
     el.foot.replaceChildren(
       h('span', {}, S.view === 'curve' ? '线性刻度 · 悬停时各分图联动 · 单击详情 · ⌘/Ctrl+单击固定' : '悬停看数值 · 单击看详情'),
+      undefaulted ? h('span', { class: 'notice' }, `${undefaulted} 个模型缺少默认档信息，未按默认档筛选`) : '',
       missing && S.view !== 'table'
         ? h('button', { class: 'link', id: 'missing', onclick: showMissing }, `${missing} 个配置暂无单任务价格`)
         : '');

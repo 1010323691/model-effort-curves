@@ -47,11 +47,19 @@
     { id: 'max', name: 'Max', short: 'Max' },
   ].filter((e) => payload.rows.some((r) => r.effort === e.id));
   const effortById = new Map(AA.EFFORTS.map((e) => [e.id, e]));
-  AA.effortName = (r) => effortById.get(r.effort)?.name || r.suffix || '单档';
-
+  const cellOf = (r) => `${r.group}\n${r.effort || ''}`;
+  const perCell = new Map();
+  for (const r of payload.rows) perCell.set(cellOf(r), (perCell.get(cellOf(r)) || 0) + 1);
+  // 同档位有多个配置时，只有原始后缀和原名能区分
+  const shared = (r) => perCell.get(cellOf(r)) > 1;
+  AA.effortName = (r) => (shared(r) ? r.suffix || r.name : effortById.get(r.effort)?.name || r.suffix || '单档');
+  const labelOf = (r) => {
+    if (shared(r)) return r.name;
+    return r.effort || r.suffix ? `${r.model} · ${effortById.get(r.effort)?.name || r.suffix}` : r.model;
+  };
   AA.rows = payload.rows.map((r) => ({
     ...r,
-    label: r.effort || r.suffix ? `${r.model} · ${effortById.get(r.effort)?.name || r.suffix}` : r.model,
+    label: labelOf(r),
     date: r.released ? Date.parse(`${r.released}T00:00:00Z`) : null,
   }));
   AA.byId = new Map(AA.rows.map((r) => [r.id, r]));
@@ -63,6 +71,7 @@
   for (const list of AA.groups.values()) list.sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99));
   AA.modelName = (group) => AA.groups.get(group)?.[0].model || group;
   AA.levelCount = (group) => AA.groups.get(group).filter((r) => r.cost !== null).length;
+  AA.defaultUnknown = (group) => AA.levelCount(group) > 1 && !AA.groups.get(group).some((r) => r.isDefault);
   AA.groupBy = (rows, key = (r) => r.group) => {
     const map = new Map();
     for (const r of rows) {
@@ -352,7 +361,7 @@
     'China Mobile': '中国移动', 'Joy Future Academy': '京东', Upstage: '韩国',
   };
   AA.matcher = (query) => {
-    const text = (r) => `${r.label} ${r.name} ${r.vendor} ${ALIASES[r.vendor] || ''}`;
+    const text = (r) => `${r.label} ${r.name} ${effortById.get(r.effort)?.name || ''} ${r.vendor} ${ALIASES[r.vendor] || ''}`;
     const q = query.trim();
     if (!q) return () => true;
     const regex = /^\/(.+)\/$/.exec(q);
@@ -425,7 +434,10 @@
         value: (r) => (r.cost === 0 ? Infinity : r.cost === null ? -Infinity : r.iq / r.cost),
       }[S.pick];
       rows = [...AA.groupBy(rows).values()].flatMap((g) => {
-        if (S.pick === 'default') return AA.levelCount(g[0].group) > 1 ? g.filter((r) => r.isDefault) : g;
+        if (S.pick === 'default') {
+          const { group } = g[0];
+          return AA.levelCount(group) > 1 && !AA.defaultUnknown(group) ? g.filter((r) => r.isDefault) : g;
+        }
         return [g.reduce((best, r) => (score(r) > score(best) ? r : best))];
       });
     }

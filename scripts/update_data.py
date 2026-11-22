@@ -360,7 +360,7 @@ def commit(files):
 
 def csv_cell(value):
     # 来源文本以 = + - @ 开头时，电子表格会当作公式执行
-    return f"'{value}" if isinstance(value, str) and value[:1] in "=+-@" else value
+    return f"'{value}" if isinstance(value, str) and value[:1] in ("=", "+", "-", "@") else value
 
 
 def save(payload, models, summary):

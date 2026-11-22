@@ -378,6 +378,44 @@ try {
     ok(12, `更新完成时保留${label}里正在输入的值`, reloaded && check(await state()));
   }
 
+  // 13 同档位的两个配置、缺少默认档信息
+  const dataFile = join(copy, 'data', 'data.js');
+  const original = readFileSync(dataFile, 'utf8');
+  const changed = JSON.parse(original.slice('window.AA_DATA='.length).trim().replace(/;$/, ''));
+  const nova = changed.rows.filter((r) => r.group === 'test-nova');
+  const high = nova.find((r) => r.effort === 'high');
+  const twin = nova.find((r) => r.effort === 'low');
+  Object.assign(twin, { effort: 'high', rank: high.rank, suffix: 'High Fast', name: 'Test Nova (High Fast)', iq: 12.3 });
+  high.iq = 45.6;
+  for (const r of changed.rows) if (r.group === 'test-terra') r.isDefault = false;
+  writeFileSync(dataFile, `window.AA_DATA=${JSON.stringify(changed)};\n`);
+  await open({ view: 'matrix', metric: 'iq', models: ['test-nova'] });
+  const cells = await run('[...document.querySelectorAll("#stage svg text")].map((t) => t.textContent)');
+  ok(13, '热力图同档位两个配置都显示', cells?.includes('12.3') && cells?.includes('45.6'), cells);
+  ok(13, '同档位两个配置的名称能区分', await run(`new Set(AA.groups.get('test-nova').map((r) => r.label)).size === ${nova.length}`));
+  await open({ pick: 'default', models: ['test-terra'] });
+  ok(13, '缺少默认档信息时保留整组', await run("AA.filter().length === AA.groups.get('test-terra').length"));
+  ok(13, '并提示缺少默认档信息', await run('document.body.innerText.includes("缺少默认档信息")'));
+  await viewport(390, 844);
+  ok(13, '窄屏也能看到这条提示', await run('document.body.innerText.includes("缺少默认档信息")'));
+  await viewport(1920, 1080);
+  await open({ pick: 'default', models: ['test-terra'], efforts: ['high'] });
+  ok(13, '叠加档位筛选时提示仍然属实', await run('document.querySelector(".foot .notice")?.textContent.includes("未按默认档筛选")'));
+  await open({ pick: 'default', models: ['test-atlas-prime'] });
+  ok(13, '有默认档信息时只留默认档', await run('AA.filter().length === 1 && !document.body.innerText.includes("缺少默认档信息")'));
+  await open();
+  ok(13, '同档位两个配置的档位名能区分', await run(`new Set(AA.groups.get('test-nova').map(AA.effortName)).size === ${nova.length}`));
+  for (const [i, r] of changed.rows.filter((x) => x.group === 'test-comet').slice(0, 2).entries()) {
+    Object.assign(r, { effort: 'non-reasoning', rank: 0, suffix: `Non-reasoning ${i}`, name: `Test Comet (Non-reasoning ${i})` });
+  }
+  for (const r of changed.rows) if (r.group === 'test-comet') r.model = 'Test Comet With A Very Long Model Name That Will Not Fit';
+  writeFileSync(dataFile, `window.AA_DATA=${JSON.stringify(changed)};\n`);
+  await open({ q: '非推理', models: ['test-comet'] });
+  ok(13, '同档位配置仍能按档位中文名搜到', await run('AA.filter().length >= 2'));
+  await open({ view: 'matrix', metric: 'iq', models: ['test-comet'] });
+  ok(13, '模型名很长时仍保留拆行序号', await run('["（1/2）", "（2/2）"].every((n) => document.querySelector("#stage svg").textContent.includes(n))'));
+  writeFileSync(dataFile, original);
+
   // 6 抽屉与弹层并存
   await open();
   await run('AA.ui.details("test-nova"); 1');

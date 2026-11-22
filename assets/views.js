@@ -351,7 +351,16 @@
       if (!valued.length) return empty(stage);
       const cols = AA.EFFORTS.filter((e) => valued.some((r) => r.effort === e.id)).map((e) => ({ id: e.id, name: e.name }));
       if (valued.some((r) => !r.effort)) cols.push({ id: null, name: '单档' });
-      const models = modelsByIq(valued).sort((a, b) => (b[1].length > 1) - (a[1].length > 1));
+      // 同一档位有多个配置时拆成多行，一个都不丢
+      const models = modelsByIq(valued).sort((a, b) => (b[1].length > 1) - (a[1].length > 1)).flatMap(([group, list]) => {
+        const byEffort = [...AA.groupBy(list, (r) => r.effort || null).values()];
+        const count = Math.max(...byEffort.map((same) => same.length));
+        return Array.from({ length: count }, (_, k) => ({
+          group,
+          list: byEffort.flatMap((same) => same.slice(k, k + 1)),
+          tag: count > 1 ? `（${k + 1}/${count}）` : '',
+        }));
+      });
       const width = Math.max(W, 660);
       const left = 220;
       const cw = (width - left - 8) / cols.length;
@@ -362,9 +371,11 @@
       const hi = Math.max(...values);
       cols.forEach((c, i) => svg.append(AA.text(left + (i + 0.5) * cw, 18, c.name, { anchor: 'middle', weight: 600, fill: T.ink })));
       const hits = [];
-      models.forEach(([group, list], j) => {
+      models.forEach(({ group, list, tag }, j) => {
         const y = 36 + j * rh;
-        label(svg, list[0], left - 9, y + rh / 2, left - 15, { text: list[0].model });
+        // 只截短模型名，序号留着
+        const text = AA.ellipsis(list[0].model, left - 16 - AA.textWidth(tag, 11.5), 11.5) + tag;
+        label(svg, list[0], left - 9, y + rh / 2, left - 15, { text });
         cols.forEach((c, i) => {
           const x = left + i * cw;
           const row = list.find((r) => (r.effort || null) === c.id);

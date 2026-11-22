@@ -126,6 +126,10 @@ class UpdateScript(UpdateBase):
         self.refresh(self.models)
         self.assertNotIn("</script>", (self.data / "data.js").read_text())
 
+    def test_csv_keeps_empty_cells_empty(self):
+        self.assertEqual(["", "x", "'=1", "'+1", "'-1", "'@a"],
+                         [update.csv_cell(v) for v in ("", "x", "=1", "+1", "-1", "@a")])
+
     def test_csv_formula_is_escaped(self):
         self.models[3]["name"] = "=HYPERLINK(1)"
         self.refresh(self.models)
@@ -465,6 +469,30 @@ class OccupiedPort(unittest.TestCase):
         busy = self.squat(b"SSH-2.0-OpenSSH_9.9\r\n")
         self.assertNotIn(f":{busy}/", self.start_copy(busy))
 
+    def test_skips_a_port_taken_on_all_interfaces(self):
+        with socket.socket() as listener:
+            listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            listener.bind(("0.0.0.0", 0))
+            listener.listen(8)
+            listener.settimeout(0.2)
+            busy = listener.getsockname()[1]
+            done = threading.Event()
+
+            def hang_up():
+                while not done.is_set():
+                    try:
+                        listener.accept()[0].close()
+                    except OSError:
+                        pass
+
+            answering = threading.Thread(target=hang_up, daemon=True)
+            answering.start()
+            try:
+                self.assertNotIn(f":{busy}/", self.start_copy(busy))
+            finally:
+                done.set()
+                answering.join()
+
     @unittest.skipUnless(socket.has_ipv6, "没有 IPv6")
     def test_skips_a_port_taken_on_ipv6_localhost(self):
         listener = socket.socket(socket.AF_INET6)
@@ -669,6 +697,19 @@ class LocalServer(unittest.TestCase):
         self.assertIsNone(response.getheader("Access-Control-Allow-Origin"))
         self.assertEqual("same-origin", response.getheader("Cross-Origin-Resource-Policy"))
         self.assertNotIn(str(self.root), body.decode())
+
+    def test_serves_a_data_folder_stored_elsewhere(self):
+        outside = tempfile.TemporaryDirectory()
+        self.addCleanup(outside.cleanup)
+        stored = Path(outside.name) / "stored"
+        shutil.copytree(self.root / "data", stored)
+        (self.root / "data").rename(self.root / "data-in-place")
+        (self.root / "data").symlink_to(stored)
+        self.assertEqual(200, self.request("/data/data.js")[0].status)
+        self.assertEqual(404, self.request("/data/leaderboard-raw.json")[0].status)
+        # 允许整个目录在别处，但目录里的单个文件不能再指到目录外
+        (stored / "models.json").symlink_to(self.root / "README.md")
+        self.assertEqual(404, self.request("/data/models.json")[0].status)
 
     def test_ping_accepts_a_symlinked_project_path(self):
         link = self.root.parent / f"{self.root.name}-link"

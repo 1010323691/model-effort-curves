@@ -59,13 +59,15 @@ def logical_paths(root):
     return found
 
 
-def taken_on_ipv6(port):
-    """浏览器会先试 [::1]：那里若有别的程序，localhost 打开的就不是看板。"""
-    try:
-        with socket.create_connection(("::1", port), timeout=0.3):
-            return True
-    except OSError:
-        return False
+def port_taken(port):
+    """能绑定不代表没人用：macOS 允许在别人的 0.0.0.0 监听上再绑 127.0.0.1，浏览器还会先试 [::1]。"""
+    for host in ("127.0.0.1", "::1"):
+        try:
+            with socket.create_connection((host, port), timeout=0.3):
+                return True
+        except OSError:
+            pass
+    return False
 
 
 def read_json(path):
@@ -242,13 +244,15 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(404)
         root = self.server.updater.root
         file = (root / name).resolve()
-        if root not in file.parents:
+        # data/ 整体可以是指向别处的软链接，其中的文件不能再指出去
+        home = (root / "data").resolve() if name.startswith("data/") else root
+        if home not in file.parents:
             return self.reply(404)
         try:
             body = file.read_bytes()
         except OSError:
             return self.reply(404)
-        self.reply(200, body, TYPES[file.suffix])
+        self.reply(200, body, TYPES[Path(name).suffix])
 
     do_HEAD = do_GET
 
@@ -316,7 +320,7 @@ def main():
             return
     updater = Updater(ROOT)
     for port in ports:
-        if taken_on_ipv6(port):
+        if port_taken(port):
             continue
         try:
             server = Server(port, updater)

@@ -270,7 +270,7 @@ kbd { font: inherit; font-weight: 600; }
   .card-head { padding: 7px 8px 3px; }
   .heading p { display: none; }
   .options { width: 100%; }
-  .foot span { display: none; }
+  .foot span:not(.notice) { display: none; }
   .pick-cards { grid-template-columns: minmax(0, 1fr); }
 }
 @media print {
